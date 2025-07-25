@@ -1,75 +1,101 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import SearchBarr from "@/components/SearchBarr";
+import { useSavedMovies } from "@/context/SavedMoviesContext";
+import { fetchMovies } from "@/services/api";
+import useFetch from "@/services/useFetch";
+import { MaterialIcons } from "@expo/vector-icons";
+import { Text } from "@react-navigation/elements";
+import { useRouter } from "expo-router";
+import { ActivityIndicator, FlatList, Image, ScrollView, TouchableOpacity, View } from "react-native";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+export default function Index() {
+  const router = useRouter();
+  const { data, loading, error } = useFetch(() => fetchMovies({ query: "" }));
+  const { handleSave, savedMovies } = useSavedMovies();
 
-export default function HomeScreen() {
+  // Kaydedilmiş mi kontrolü (isteğe bağlı)
+  const isSaved = (id: number) => savedMovies.some(m => Number(m.id) === id);
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <View className="flex-1 bg-primary">
+      <ScrollView className="flex-1 px-5">
+        {/* Arama Kutusu */}
+        <View className="flex-1 mt-20 rounded-3xl bg-dark-200">
+          <SearchBarr
+            onPress={() => router.push("/search")}
+            placeholder="Search for a movie"
+          />
+        </View>
+        <View>
+         <Text style={{ color: "white", marginTop:10, marginBottom:10 }}>Latest Movies</Text>
+        </View>
+
+      {/* Durum: Yükleniyor / Hata / Veri */}
+      {loading ? (
+        <ActivityIndicator size="large" color="#0000ff" className="mt-10 self-center" />
+      ) : error ? (
+        <Text style={{ color: "red" }}>Error: {error.message}</Text>
+      ) : (
+        <FlatList
+          data={data?.results || []}
+          keyExtractor={item => item.id?.toString()}
+          numColumns={3}
+          columnWrapperStyle={{ justifyContent: "space-between", marginBottom: 16 }}
+          renderItem={({ item }) => (
+            <View style={{ position: "relative", flex: 1, marginHorizontal: 4 }}>
+              <TouchableOpacity
+                onPress={() => router.push(`/movies/${item.id}`)}
+                style={{
+                  backgroundColor: "#221f3d",
+                  borderRadius: 12,
+                  padding: 10,
+                  alignItems: "center",
+                  flex: 1,
+                }}
+              >
+                <Image
+                  source={
+                    item.poster_path
+                      ? { uri: `https://image.tmdb.org/t/p/w500${item.poster_path}` }
+                      : undefined
+                  }
+                  style={{ width: 100, height: 150, borderRadius: 8, marginBottom: 8 }}
+                  resizeMode="cover"
+                />
+                <Text style={{ color: "#fff", fontWeight: "bold", textAlign: "center" }}>
+                  {item.title}
+                </Text>
+                <Text style={{ color: "#FFD700", fontSize: 14, marginTop: 2 }}>
+                  ★ {item.vote_average?.toFixed(1) ?? "?"} / 10
+                </Text>
+                <Text style={{ color: "#ab8bff", fontSize: 12, marginTop: 2 }}>
+                  {item.release_date ? item.release_date.slice(0, 4) : "?"}
+                </Text>
+                <Text></Text>
+              </TouchableOpacity>
+              {/* Kaydet ikonu */}
+              <TouchableOpacity
+                onPress={() => handleSave(item)}
+                style={{
+                  position: "absolute",
+                  top: 12,
+                  right: 12,
+                  zIndex: 2,
+                  backgroundColor: "#fff2",
+                  borderRadius: 20,
+                  padding: 4,
+                }}
+              >
+                <MaterialIcons
+                  name={isSaved(item.id) ? "bookmark" : "bookmark-border"}
+                  size={24}
+                  color="#FFD700"
+                />
+              </TouchableOpacity>
+            </View>
+          )}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      )}
+      </ScrollView>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
